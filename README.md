@@ -12,6 +12,8 @@ Ce projet démontre les meilleures pratiques pour la gestion des branches et des
 6. [Outils de Qualité](#outils-de-qualité)
 7. [Installation](#installation)
 8. [Astuces Git Utiles](#astuces-git-utiles)
+9. [Processus de Pull Request](#processus-de-pull-request)
+10. [Tests et Scripts Utilitaires](#tests-et-scripts-utilitaires)
 
 ## Structure des Branches
 
@@ -435,6 +437,90 @@ git branch -r
 git remote prune origin
 ```
 
+## Processus de Pull Request
+
+### Workflow de Branches
+```mermaid
+graph LR
+    A[develop] --> B[develop/nom_feature]
+    B --> C[test]
+    C --> D[main]
+```
+
+### Règles de Pull Request
+
+1. **Création de la branche feature**
+   - Toujours partir de la branche `develop`
+   - Nommer la branche : `develop/nom_feature`
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b develop/nouvelle-fonctionnalite
+   ```
+
+2. **Développement et Tests**
+   - Développer la fonctionnalité
+   - Ajouter des tests unitaires
+   - S'assurer que tous les tests passent
+   - Vérifier la qualité du code avec ESLint
+   ```bash
+   npm run test
+   npm run lint
+   ```
+
+3. **Création de la Pull Request**
+   - Pousser votre branche
+   ```bash
+   git push origin develop/nouvelle-fonctionnalite
+   ```
+   - Créer la PR sur GitHub/GitLab vers la branche `test`
+   - Remplir le template de PR avec :
+     - Description détaillée des changements
+     - Liste des tests effectués
+     - Screenshots (si UI)
+     - Tickets liés
+
+4. **Processus de Validation**
+   - **Reviewers requis** : 2 développeurs seniors minimum
+   - **Critères de validation** :
+     - Tous les tests passent
+     - Code coverage maintenu ou amélioré
+     - Pas de conflits avec `test`
+     - Respect des standards de code
+     - Documentation à jour
+
+5. **Merge vers Test**
+   - Après approbation, merge vers `test`
+   - Tests d'intégration automatiques
+   - Tests de non-régression
+   - Validation fonctionnelle par QA
+
+6. **Promotion vers Main**
+   - Création d'une PR de `test` vers `main`
+   - Validation finale par le Tech Lead
+   - Tests en environnement de staging
+   - Merge uniquement après validation complète
+
+### Droits et Rôles
+
+| Rôle | Droits |
+|------|--------|
+| Développeur Junior | - Création de branches feature<br>- Push sur branches feature<br>- Création de PR |
+| Développeur Senior | - Review de code<br>- Approbation des PR<br>- Merge vers `test` |
+| Tech Lead | - Merge vers `main`<br>- Gestion des releases<br>- Configuration des branches |
+| QA | - Validation fonctionnelle<br>- Sign-off pour production |
+
+### Checklist de Validation
+
+- [ ] Tests unitaires passent
+- [ ] Tests d'intégration passent
+- [ ] Pas de régression
+- [ ] Documentation mise à jour
+- [ ] Code review approuvée par 2 seniors
+- [ ] QA validation sur `test`
+- [ ] Performance vérifiée
+- [ ] Sécurité validée
+
 ## Rappels Importants
 
 ### Points Clés à Retenir
@@ -466,3 +552,163 @@ Si vous rencontrez des difficultés :
 4. Consultez la [documentation Git officielle](https://git-scm.com/doc)
 
 N'oubliez pas : il est normal de faire des erreurs au début. L'important est d'apprendre et de s'améliorer progressivement.
+
+## Tests et Scripts Utilitaires
+
+### Scripts Disponibles
+
+Ce projet inclut plusieurs scripts utilitaires pour faciliter le workflow Git :
+
+```bash
+# Gestion des branches
+npm run git:feature <nom-feature>    # Crée une nouvelle branche feature
+npm run git:pr <target>              # Prépare une Pull Request
+npm run git:status                   # Vérifie l'état de la branche
+npm run git:validate <nom-branche>   # Valide un nom de branche
+
+# Qualité du code
+npm run lint                         # Vérifie le style du code
+npm run format                       # Formate le code automatiquement
+npm run test                         # Lance les tests unitaires
+```
+
+### Tests Unitaires
+
+Le projet utilise Jest pour les tests unitaires. Les tests sont organisés dans le dossier `src/utils/__tests__/`.
+
+#### Exécution des Tests
+
+```bash
+# Lancer tous les tests
+npm test
+
+# Mode watch (relance les tests à chaque modification)
+npm test -- --watch
+
+# Voir la couverture de code
+npm test -- --coverage
+```
+
+#### Structure des Tests
+
+Les tests sont organisés en trois catégories principales :
+
+1. **Validateurs Git** (`git-validators.test.js`)
+   ```javascript
+   // Exemple de test de validation de branche
+   test('valide une branche feature correcte', () => {
+     const result = validateBranchName('develop/feature/auth-system');
+     expect(result.isValid).toBe(true);
+     expect(result.type).toBe('feature');
+   });
+   ```
+
+2. **Générateur de Template PR** (`pr-template-generator.test.js`)
+   ```javascript
+   // Exemple de test de génération de template
+   test('génère un template complet', () => {
+     const template = PRTemplateGenerator.generateTemplate({
+       title: 'Nouvelle feature',
+       type: 'feature'
+     });
+     expect(template).toContain('# Nouvelle feature');
+   });
+   ```
+
+3. **Workflow Git** (`git-workflow.test.js`)
+   ```javascript
+   // Exemple de test de création de branche
+   test('crée une branche feature', () => {
+     GitWorkflow.createFeatureBranch('auth-feature');
+     expect(execSync).toHaveBeenCalledWith(
+       'git checkout -b develop/feature/auth-feature'
+     );
+   });
+   ```
+
+### Couverture de Code
+
+Le projet exige une couverture de code minimale de 80% pour :
+- Branches
+- Fonctions
+- Lignes
+- Statements
+
+Visualisez la couverture avec :
+```bash
+npm test -- --coverage
+```
+
+### Utilisation des Scripts JavaScript
+
+#### 1. Validation des Branches
+
+```javascript
+const { validateBranchName } = require('./utils/git-validators');
+
+// Valider un nom de branche
+const result = validateBranchName('develop/feature/ma-feature');
+if (result.isValid) {
+  console.log(`✅ Branche valide de type: ${result.type}`);
+} else {
+  console.error(`❌ ${result.message}`);
+}
+```
+
+#### 2. Génération de Template PR
+
+```javascript
+const PRTemplateGenerator = require('./utils/pr-template-generator');
+
+// Générer un template de PR
+const template = PRTemplateGenerator.generateTemplate({
+  title: 'Nouvelle fonctionnalité d\'authentification',
+  type: 'feature',
+  description: 'Implémentation de l\'authentification OAuth',
+  tests: ['Tests unitaires auth'],
+  tickets: ['JIRA-123']
+});
+```
+
+#### 3. Gestion du Workflow Git
+
+```javascript
+const GitWorkflow = require('./utils/git-workflow');
+
+// Créer une nouvelle branche feature
+try {
+  GitWorkflow.createFeatureBranch('auth-system');
+} catch (error) {
+  console.error('Erreur:', error.message);
+}
+
+// Vérifier l'état de la branche
+GitWorkflow.checkBranchStatus();
+```
+
+### Hooks Git Automatiques
+
+Le projet utilise Husky pour exécuter automatiquement :
+
+1. **Pre-commit** : Vérifie le code avant chaque commit
+   ```bash
+   npm run lint && npm run format
+   ```
+
+2. **Commit-msg** : Valide le format du message de commit
+   ```bash
+   # Exemple de message valide
+   feat: ajouter l'authentification OAuth
+   ```
+
+### Maintenance des Tests
+
+1. **Ajout de Nouveaux Tests**
+   - Créer un fichier `*.test.js` dans `__tests__`
+   - Suivre le format existant
+   - Couvrir les cas positifs et négatifs
+
+2. **Mise à Jour des Tests**
+   - Maintenir la couverture > 80%
+   - Mettre à jour les tests lors des changements de fonctionnalités
+   - Vérifier que tous les tests passent avant de commiter
